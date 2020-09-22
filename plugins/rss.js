@@ -25,66 +25,90 @@ let val = String("feed");
 let obj = {};
 obj[val] = key;
 db2.read().get('rss').defaults(obj).write();
+const check_interval = 3 * 60 * 1000;
+let update2 = false;
 const update = async() => {
     api.logger.info(`RSS 开始更新订阅`);
+    let ii = 0;
+    update2 = true;
     const r = await db2.read().get(`rss[feed]`).value();
-    for (const _rss of r) {
-        parser.parseURL(_rss.url).then(async rss_result => {
-            try {
-                const id = rss_result.items[0].link; //最新的
-                //console.log(rss_result);
-                //console.log(id)
-                //console.log(_rss.last_id)
-                let index = 0;
-                let i = 0;
-                let s = "";
-                for (i = 0; i < rss_result.items.length; i++) { //判断更新了多少条
-                    if (_rss.last_id == rss_result.items[i].link) {
-                        break;
-                    } else {
-                        index++;
+    checkEach();
+    //console.log(r.length);
+
+    function checkEach() {
+        if (r[ii] == undefined) {
+            return;
+        }
+        setTimeout(async function() {
+            if (r.length > 0) {
+                //console.log(r[ii].url);
+                await parser.parseURL(r[ii].url).then(async rss_result => {
+                    try {
+                        const id = rss_result.items[0].link; //最新的
+                        //console.log(id)
+                        //console.log(r[ii]);
+                        //console.log(r[ii].last_id)
+                        //console.log(rss_result.items[0].link);
+                        let index = 0;
+                        let i = 0;
+                        let s = "";
+                        for (i = 0; i < rss_result.items.length; i++) { //判断更新了多少条
+                            //console.log(rss_result.items[i].link);
+                            if (r[ii].last_id == rss_result.items[i].link) {
+                                break;
+                            } else {
+                                index++;
+                            }
+                        }
+                        s = `[RSS] 您订阅的 ${rss_result.title.trim()} 更新了\n`;
+                        //let temp;
+                        for (i = 0; i < index; i++) { //确认要更新多少后，开始转发
+                            //temp = /&lt;pre style=.*&gt;(.*)&lt;/.exec(rss_result.items[i].content.trim());
+                            //console.log(rss_result.items[i]);
+                            s = s + [
+                                `标题${(i+1).toString()}：${rss_result.items[i].title.trim()}`,
+                                `内容：${rss_result.items[i].contentSnippet.trim()}`,
+                                `链接：${rss_result.items[i].link}`
+                            ].join('\n') + "\n";
+                        }
+                        /*
+                        {
+                            title: '',
+                            link: '',
+                            pubDate: '',
+                            author: '',
+                            content: '',
+                            contentSnippet: '',
+                            id: '',
+                            isoDate: ''
+                        }
+                        */
+                        //console.log(groups.group);
+                        //console.log("index:" + index);
+                        if (index > 0) { //有更新才转发
+                            api.bot.socket.send.group(s, r[ii].group);
+                            await db2.read().get(`rss[feed]`).find({
+                                id: r[ii].id
+                            }).assign({
+                                last_id: id
+                            }).write();
+                        }
+                    } catch (e) {
+                        api.logger.warn(`RSS 更新错误, url: ${r[ii].url}, err: ${e}`);
                     }
-                }
-                s = `[RSS] 您订阅的 ${rss_result.title.trim()} 更新了\n`;
-                let temp;
-                for (i = 0; i < index; i++) { //确认要更新多少后，开始转发
-                    //temp = /&lt;pre style=.*&gt;(.*)&lt;/.exec(rss_result.items[i].content.trim());
-                    //console.log(rss_result.items[i]);
-                    s = s + [
-                        `标题${(i+1).toString()}：${rss_result.items[i].title.trim()}`,
-                        `内容：${rss_result.items[i].contentSnippet.trim()}`,
-                        `链接：${rss_result.items[i].link}`
-                    ].join('\n') + "\n";
-                }
-                /*
-                {
-                    title: '',
-                    link: '',
-                    pubDate: '',
-                    author: '',
-                    content: '',
-                    contentSnippet: '',
-                    id: '',
-                    isoDate: ''
-                }
-                */
-                //console.log(groups.group);
-                if (index > 0) { //有更新才转发
-                    api.bot.socket.send.group(s, _rss.group);
-                    db2.read().get(`rss[feed]`).find({
-                        id: _rss.id
-                    }).assign({
-                        last_id: id
-                    }).write();
-                }
-            } catch (e) {
-                api.logger.warn(`RSS 更新错误, url: ${_rss.url}, err: ${e}`);
+                }).catch(e => {
+                    api.logger.warn(`RSS 更新失败, url: ${r[ii].url}, err: ${JSON.stringify(e)}`);
+                })
             }
-        }).catch(e => {
-            api.logger.warn(`RSS 更新失败, url: ${_rss.url}, err: ${JSON.stringify(e)}`);
-        })
+            ii++;
+            //console.log("ii:" + ii);
+            if (ii < r.length) checkEach();
+            else {
+                api.logger.info(`RSS 订阅更新完成`);
+                update2 = false;
+            }
+        }, ii * 1000); //按指定时间间隔获取信息
     }
-    api.logger.info(`RSS 订阅更新完成`);
 }
 
 module.exports = {
@@ -99,7 +123,7 @@ module.exports = {
             onload: (e) => {
                 n.timer = setInterval(async() => {
                     await update();
-                }, 3e4);
+                }, check_interval);
                 api.logger.info(`RSS RSS订阅器开始运行`);
             },
             // 卸载
@@ -174,6 +198,9 @@ length	可选。子串中的字符数。必须是数值。如果省略了该参�
                     if (!admin.isAdmin(e.sender.user_id)) {
                         api.bot.socket.send.group('很抱歉，你不是机器人管理员，无权限操作！', e.group);
                         return;
+                    } else if (update2 == true) {
+                        api.bot.socket.send.group('很抱歉，订阅更新中，暂不能删除订阅！', e.group);
+                        return;
                     }
                     try {
                         //console.log(await db2.read().get(`rss[feed]`).find({
@@ -241,9 +268,12 @@ length	可选。子串中的字符数。必须是数值。如果省略了该参�
                     if (!admin.isAdmin(e.sender.user_id)) {
                         api.bot.socket.send.group('很抱歉，你不是机器人管理员，无权限操作！', e.group);
                         return;
+                    } else if (update2 == true) {
+                        api.bot.socket.send.group('很抱歉，订阅更新中，暂不能再次刷新！', e.group);
+                        return;
                     }
                     await update();
-                    api.bot.socket.send.group('[RSS] 刷新成功', e.group);
+                    api.bot.socket.send.group('[RSS] 开始刷新', e.group);
                 }
             },
             {
@@ -251,7 +281,7 @@ length	可选。子串中的字符数。必须是数值。如果省略了该参�
                 helper: '。rss help	rss帮助说明',
                 command: /。rss help/,
                 func: async(e) => {
-                    api.bot.socket.send.group('[RSS] 指令列表：\n查询 。rss list\n增加 。rss add\n删除 。rss del\n立即刷新 。rss update', e.group);
+                    api.bot.socket.send.group('[RSS] 指令列表：\n查询 。rss list\n增加 。rss add[链接]+[备注说明]\n删除 。rss del[链接]\n立即刷新 。rss update', e.group);
                 }
             }
         ]
