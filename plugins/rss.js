@@ -30,6 +30,9 @@ let update2 = false;
 const update = async() => {
     api.logger.info(`RSS 开始更新订阅`);
     let ii = 0;
+    if (update2 == true) {
+        return;
+    }
     update2 = true;
     const r = await db2.read().get(`rss[feed]`).value();
     checkEach();
@@ -41,6 +44,7 @@ const update = async() => {
         }
         setTimeout(async function() {
             if (r.length > 0) {
+                api.logger.info(r[ii].url);
                 //console.log(r[ii].url);
                 await parser.parseURL(r[ii].url).then(async rss_result => {
                     try {
