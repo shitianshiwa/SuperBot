@@ -110,10 +110,15 @@ module.exports = {
         },
         commands: [{
                 id: 'add',
-                helper: '。rss add [链接]	添加订阅',
+                helper: '。rss add [链接]+[说明]	添加订阅',
                 command: /^。rss add (.*)$/,
                 func: async(e) => {
-                    const link = e.msg.substr(9);
+                    const temp = e.msg.substr(9);
+                    let link = temp.split("+")[0];
+                    let s = "";
+                    if (temp.split("+").length == 2) {
+                        s = temp.split("+")[1];
+                    }
                     /*
  https://www.w3school.com.cn/js/jsref_substr.asp JavaScript substr() 方法
 参数	描述
@@ -139,6 +144,7 @@ length	可选。子串中的字符数。必须是数值。如果省略了该参�
                                     .push({
                                         id: id,
                                         url: link,
+                                        s: s,
                                         group: group,
                                         user: sender,
                                         status: "enable",
@@ -210,6 +216,7 @@ length	可选。子串中的字符数。必须是数值。如果省略了该参�
                                 //console.log(data[i].user);
                                 //console.log(data[i].status);
                                 s1 += "id: " + data[i].id + " , ";
+                                s1 += "备注：" + data[i].s + " , ";
                                 s1 += "url：" + data[i].url;
                                 //s1 += "group: " + data[i].group;
                                 //s2 += "user:" + data[i].user + "\n";
