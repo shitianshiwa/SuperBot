@@ -1,19 +1,13 @@
 module.exports = {
-    //正向ws
     socket: {
-        api: 'ws://127.0.0.1:6700/ws/api/',
-        event: 'ws://127.0.0.1:6700/ws/event/'
-    },
-    db: {
-        // 数据库配置
-        host: '',
-        user: '',
-        database: '',
-        password: '',
-        port: 0
+        api: 'ws://127.0.0.1:8080/ws/api/',
+        event: 'ws://127.0.0.1:8080/ws/event/'
     },
     plugin: {
-        rss: {},
+        rss: {
+            check_interval: 3 * 60 * 1000, //定时获取信息
+            cd: 3 * 1000 //api使用延迟
+        },
         whois: {
             token: '' // 查询Whois的API
         },

@@ -5,6 +5,7 @@ const admin = require('../lib/admin');
 const api = require('../lib/api')
 const dbDir = path.join(__dirname, '../db2');
 const low = require('lowdb');
+const config = require('../config');
 
 //json数据库
 //const isCi = (process.argv.indexOf('ci') !== -1);
@@ -25,7 +26,8 @@ let val = String("feed");
 let obj = {};
 obj[val] = key;
 db2.read().get('rss').defaults(obj).write();
-const check_interval = 3 * 60 * 1000;
+const check_interval = config.plugin.rss.check_interval;
+const cd = config.plugin.rss.cd;
 let update2 = false;
 const update = async() => {
     api.logger.info(`RSS 开始更新订阅`);
@@ -111,7 +113,7 @@ const update = async() => {
                 api.logger.info(`RSS 订阅更新完成`);
                 update2 = false;
             }
-        }, ii * 1000); //按指定时间间隔获取信息
+        }, cd); //按指定时间间隔获取信息
     }
 }
 
