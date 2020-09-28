@@ -41,7 +41,7 @@ const update = async() => {
     //console.log(r.length);
 
     function checkEach() {
-        if (r[ii] == undefined) {
+        if (r[ii] == undefined || r[ii].status != "enable") {
             return;
         }
         setTimeout(async function() {
