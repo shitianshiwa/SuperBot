@@ -15,7 +15,8 @@
         "socket.io-client": "^2.3.0",
         "util": "^0.12.3",
         "ws": "^7.3.1",
-        "lowdb": "^1.0.0"
+        "lowdb": "^1.0.0",
+        "dayjs": "^1.8.19"
     },
     "devDependencies": {
         "@types/socket.io-client": "^1.4.33"
