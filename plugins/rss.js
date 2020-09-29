@@ -6,6 +6,7 @@ const api = require('../lib/api')
 const dbDir = path.join(__dirname, '../db2');
 const low = require('lowdb');
 const config = require('../config');
+const dayjs = require('dayjs');
 
 //json数据库
 //const isCi = (process.argv.indexOf('ci') !== -1);
@@ -41,70 +42,76 @@ const update = async() => {
     //console.log(r.length);
 
     function checkEach() {
-        if (r[ii] == undefined || r[ii].status != "enable") {
+        if (r[ii] == undefined) {
             return;
         }
         setTimeout(async function() {
             if (r.length > 0) {
                 api.logger.info(r[ii].url);
                 //console.log(r[ii].url);
-                await parser.parseURL(r[ii].url).then(async rss_result => {
-                    try {
-                        const id = rss_result.items[0].link; //最新的
-                        //console.log(id)
-                        //console.log(r[ii]);
-                        //console.log(r[ii].last_id)
-                        //console.log(rss_result.items[0].link);
-                        let index = 0;
-                        let i = 0;
-                        let s = "";
-                        for (i = 0; i < rss_result.items.length; i++) { //判断更新了多少条
-                            //console.log(rss_result.items[i].link);
-                            if (r[ii].last_id == rss_result.items[i].link) {
-                                break;
-                            } else {
-                                index++;
+                if (r[ii].status == "enable") {
+                    await parser.parseURL(r[ii].url).then(async rss_result => {
+                        try {
+                            const id = rss_result.items[0].link; //最新的
+                            //console.log(id)
+                            //console.log(r[ii]);
+                            //console.log(r[ii].last_id)
+                            //console.log(rss_result.items[0].link);
+                            let index = 0;
+                            let i = 0;
+                            let s = "";
+                            for (i = 0; i < rss_result.items.length; i++) { //判断更新了多少条
+                                //console.log(rss_result.items[i].link);
+                                if (r[ii].last_id == rss_result.items[i].link) {
+                                    break;
+                                } else {
+                                    index++;
+                                }
                             }
+                            s = `[RSS] 您订阅的 ${rss_result.title.trim()} 更新了\n`;
+                            //let temp;
+                            for (i = 0; i < index; i++) { //确认要更新多少后，开始转发
+                                //temp = /&lt;pre style=.*&gt;(.*)&lt;/.exec(rss_result.items[i].content.trim());
+                                //console.log(rss_result.items[i]);
+                                s = s + [
+                                    `标题${(i+1).toString()}：${rss_result.items[i].title.trim()}`,
+                                    `内容：${rss_result.items[i].contentSnippet.trim()}`,
+                                    `链接：${rss_result.items[i].link}`,
+                                    `最后更新时间：${dayjs(rss_result.items[i].pubDate).format('YYYY年M月D日 星期d ').replace("星期0","星期天") + new Date(rss_result.items[i].pubDate).toTimeString().split("(")[0]}`
+                                ].join('\n') + "\n";
+                            }
+                            /*
+                            {
+                                title: '',
+                                link: '',
+                                pubDate: '',
+                                author: '',
+                                content: '',
+                                contentSnippet: '',
+                                id: '',
+                                isoDate: ''
+                            }
+                            */
+                            //console.log(groups.group);
+                            //console.log("index:" + index);
+                            if (index > 0) { //有更新才转发
+                                api.bot.socket.send.group(s, r[ii].group);
+                                await db2.read().get(`rss[feed]`).find({
+                                    id: r[ii].id
+                                }).assign({
+                                    last_id: id
+                                }).write();
+                            }
+                        } catch (e) {
+                            api.logger.warn(`RSS 更新错误, url: ${r[ii].url}, err: ${e}`);
                         }
-                        s = `[RSS] 您订阅的 ${rss_result.title.trim()} 更新了\n`;
-                        //let temp;
-                        for (i = 0; i < index; i++) { //确认要更新多少后，开始转发
-                            //temp = /&lt;pre style=.*&gt;(.*)&lt;/.exec(rss_result.items[i].content.trim());
-                            //console.log(rss_result.items[i]);
-                            s = s + [
-                                `标题${(i+1).toString()}：${rss_result.items[i].title.trim()}`,
-                                `内容：${rss_result.items[i].contentSnippet.trim()}`,
-                                `链接：${rss_result.items[i].link}`
-                            ].join('\n') + "\n";
-                        }
-                        /*
-                        {
-                            title: '',
-                            link: '',
-                            pubDate: '',
-                            author: '',
-                            content: '',
-                            contentSnippet: '',
-                            id: '',
-                            isoDate: ''
-                        }
-                        */
-                        //console.log(groups.group);
-                        //console.log("index:" + index);
-                        if (index > 0) { //有更新才转发
-                            api.bot.socket.send.group(s, r[ii].group);
-                            await db2.read().get(`rss[feed]`).find({
-                                id: r[ii].id
-                            }).assign({
-                                last_id: id
-                            }).write();
-                        }
-                    } catch (e) {
-                        api.logger.warn(`RSS 更新错误, url: ${r[ii].url}, err: ${e}`);
-                    }
-                }).catch(e => {
-                    api.logger.warn(`RSS 更新失败, url: ${r[ii].url}, err: ${JSON.stringify(e)}`);
-                })
+                    }).catch(e => {
+                        api.logger.warn(`RSS 更新失败, url: ${r[ii].url}, err: ${JSON.stringify(e)}`);
+                    })
+                } else {
+                    api.logger.info("跳过订阅");
+                }
+
             }
             ii++;
             //console.log("ii:" + ii);
