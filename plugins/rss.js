@@ -75,7 +75,7 @@ const update = async() => {
                                 //console.log(rss_result.items[i]);
                                 s = s + [
                                     `标题${(i+1).toString()}：${rss_result.items[i].title.trim()}`,
-                                    `内容：${rss_result.items[i].contentSnippet.trim()}`,
+                                    `内容：${getcontentSnippet(rss_result.items[i].content.trim())}`,
                                     `链接：${rss_result.items[i].link}`,
                                     `最后更新时间：${dayjs(rss_result.items[i].pubDate).format('YYYY年M月D日 星期d ').replace("星期0","星期天") + new Date(rss_result.items[i].pubDate).toTimeString().split("(")[0]}`
                                 ].join('\n') + "\n";
@@ -121,6 +121,29 @@ const update = async() => {
                 update2 = false;
             }
         }, cd); //按指定时间间隔获取信息
+    }
+
+    function getcontentSnippet(content) {
+        let contentSnippet = content;
+        console.log(content.match(/"(http|https):\/\/.*?"/g));
+        let temp = content.match(/"(http|https):\/\/.*?"/g);
+        let temp2 = ""
+        if (temp != null) {
+            for (let i = 0; i < temp.length; i++) {
+                temp2 += temp[i].replace(/"/g, "") + "\n";
+            }
+        }
+        contentSnippet = contentSnippet.replace(/<p>/g, "").replace(/<\/p>/g, "");
+        contentSnippet = contentSnippet.replace(/<code>/g, "").replace(/<\/code>/g, "");
+        contentSnippet = contentSnippet.replace(/<em>/g, "").replace(/<\/em>/g, "");
+        contentSnippet = contentSnippet.replace(/<strong>/g, "").replace(/<\/strong>/g, "");
+        contentSnippet = contentSnippet.replace(/<pre.*?>/g, "").replace(/<\/pre>/g, "");
+        contentSnippet = contentSnippet.replace(/<a.*?>/g, "").replace(/<\/a>/g, "");
+        contentSnippet = contentSnippet.replace(/<br>/g, "\n");
+        //console.log(content.match(/"(http|https):\/\/.*?"/g));
+        //https://www.runoob.com/jsref/jsref-match.html JavaScript match() 方法
+        contentSnippet = contentSnippet + "\n" + temp2;
+        return contentSnippet;
     }
 }
 
