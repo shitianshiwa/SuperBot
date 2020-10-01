@@ -49,12 +49,21 @@ const update = async() => {
         }
         setTimeout(async function() {
             if (r.length > 0) {
+                let rss = new Array();
                 api.logger.info(r[ii].url);
                 //console.log(r[ii].url);
                 if (r[ii].status == "enable") {
-                    await parser.parseURL(r[ii].url).then(async rss_result => {
+                    rss = await new Promise(async function(resolve, reject) {
+                        parser.parseURL(r[ii].url).then(async rss_result => {
+                            resolve(rss_result);
+                        }).catch(e => {
+                            api.logger.warn(`RSS 更新失败, url: ${r[ii].url}, err: ${JSON.stringify(e)}`);
+                            resolve(null);
+                        });
+                    });
+                    if (rss != null) {
                         try {
-                            const id = rss_result.items[0].link; //最新的
+                            const id = rss.items[0].link; //最新的
                             //console.log(id)
                             //console.log(r[ii]);
                             //console.log(r[ii].last_id)
@@ -62,24 +71,24 @@ const update = async() => {
                             let index = 0;
                             let i = 0;
                             let s = "";
-                            for (i = 0; i < rss_result.items.length; i++) { //判断更新了多少条
+                            for (i = 0; i < rss.items.length; i++) { //判断更新了多少条
                                 //console.log(rss_result.items[i].link);
-                                if (r[ii].last_id == rss_result.items[i].link) {
+                                if (r[ii].last_id == rss.items[i].link) {
                                     break;
                                 } else {
                                     index++;
                                 }
                             }
-                            s = `[RSS] 您订阅的 ${rss_result.title.trim()} 更新了\n`;
+                            s = `[RSS] 您订阅的 ${rss.title.trim()} 更新了\n`;
                             //let temp;
                             for (i = 0; i < index; i++) { //确认要更新多少后，开始转发
                                 //temp = /&lt;pre style=.*&gt;(.*)&lt;/.exec(rss_result.items[i].content.trim());
                                 //console.log(rss_result.items[i]);
                                 s = s + [
-                                    `标题${(i+1).toString()}：${rss_result.items[i].title.trim()}`,
-                                    `内容：${getcontentSnippet(rss_result.items[i].content.trim())}`,
-                                    `链接：${rss_result.items[i].link}`,
-                                    `最后更新时间：${dayjs(rss_result.items[i].pubDate).format('YYYY年M月D日 星期d ').replace("星期0","星期天") + new Date(rss_result.items[i].pubDate).toTimeString().split("(")[0]}`
+                                    `标题${(i+1).toString()}：${rss.items[i].title.trim()}`,
+                                    `内容：${getcontentSnippet(rss.items[i].content.trim())}`,
+                                    `链接：${rss.items[i].link}`,
+                                    `最后更新时间：${dayjs(rss.items[i].pubDate).format('YYYY年M月D日 星期d ').replace("星期0","星期天") + new Date(rss.items[i].pubDate).toTimeString().split("(")[0]}`
                                 ].join('\n') + "\n";
                                 if (i < index - 1) {
                                     s += "\n";
@@ -115,9 +124,7 @@ const update = async() => {
                         } catch (e) {
                             api.logger.warn(`RSS 更新错误, url: ${r[ii].url}, err: ${e}`);
                         }
-                    }).catch(e => {
-                        api.logger.warn(`RSS 更新失败, url: ${r[ii].url}, err: ${JSON.stringify(e)}`);
-                    })
+                    }
                 } else {
                     api.logger.info("跳过订阅");
                 }
