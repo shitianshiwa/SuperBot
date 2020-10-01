@@ -5,6 +5,7 @@ const admin = require('../lib/admin');
 const api = require('../lib/api')
 const dbDir = path.join(__dirname, '../db2');
 const low = require('lowdb');
+const _ = require('lodash'); // https://www.lodashjs.com 是一个一致性、模块化、高性能的 JavaScript 实用工具库。
 const config = require('../config');
 const dayjs = require('dayjs');
 const tieba = require("../lib/rss/teba");
@@ -169,13 +170,18 @@ const update = async() => {
         contentSnippet = contentSnippet.replace(/<pre.*?>/g, "").replace(/<\/pre>/g, "");
         contentSnippet = contentSnippet.replace(/<a.*?>/g, "").replace(/<\/a>/g, "");
         contentSnippet = contentSnippet.replace(/<img.*?>/g, "").replace(/<\/img>/g, "");
-        contentSnippet = contentSnippet.replace(/<br>/g, "").replace(/<\/img>/g, "");
-        let temp4 = contentSnippet.split("<br>");
+        contentSnippet = contentSnippet.replace(/<br>/g, "\n")
+        let temp4 = contentSnippet.split("\n");
         //console.log("temp4:" + temp4);
         if (temp4.length > 0) {
             for (i = 0; i < temp4.length; i++) {
+                //console.log(i + "," + temp4[i]);
                 if (temp4[i] != "") {
-                    temp3 += temp4[i]; //效果是去掉多余的换行
+                    if (i < temp4.length - 1) {
+                        temp3 += temp4[i] + "\n";
+                    } else {
+                        temp3 += temp4[i];
+                    }
                 }
             }
             contentSnippet = temp3
@@ -184,7 +190,7 @@ const update = async() => {
         //console.log(content.match(/"(http|https):\/\/.*?"/g));
         //https://www.runoob.com/jsref/jsref-match.html JavaScript match() 方法
         contentSnippet = contentSnippet + "\n" + tieba(temp2); //补回解析出的链接
-        return unescape(contentSnippet);
+        return unescape(contentSnippet.trim());
     }
 
     function unescape(str) {
