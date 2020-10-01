@@ -7,6 +7,7 @@ const dbDir = path.join(__dirname, '../db2');
 const low = require('lowdb');
 const config = require('../config');
 const dayjs = require('dayjs');
+const tieba = require("../lib/rss/teba");
 
 //json数据库
 //const isCi = (process.argv.indexOf('ci') !== -1);
@@ -79,6 +80,9 @@ const update = async() => {
                                     `链接：${rss_result.items[i].link}`,
                                     `最后更新时间：${dayjs(rss_result.items[i].pubDate).format('YYYY年M月D日 星期d ').replace("星期0","星期天") + new Date(rss_result.items[i].pubDate).toTimeString().split("(")[0]}`
                                 ].join('\n') + "\n";
+                                if (i < index - 1) {
+                                    s += "\n";
+                                }
                             }
                             /*
                             {
@@ -95,7 +99,12 @@ const update = async() => {
                             //console.log(groups.group);
                             //console.log("index:" + index);
                             if (index > 0) { //有更新才转发
-                                api.bot.socket.send.group(s, r[ii].group);
+                                if (r[ii].cq == "false") //true为不解析，false为解析。。。。。
+                                {
+                                    api.bot.socket.send.group(s, r[ii].group, false);
+                                } else {
+                                    api.bot.socket.send.group(s, r[ii].group);
+                                }
                                 await db2.read().get(`rss[feed]`).find({
                                     id: r[ii].id
                                 }).assign({
@@ -125,26 +134,63 @@ const update = async() => {
 
     function getcontentSnippet(content) {
         let contentSnippet = content;
-        console.log(content.match(/"(http|https):\/\/.*?"/g));
-        let temp = content.match(/"(http|https):\/\/.*?"/g);
-        let temp2 = ""
+        //console.log(content.match(/href="(http|https):\/\/.*?"/g));
+        let temp = content.match(/(href|src)="(http|https):\/\/.*?"/g); //获取链接
+        let temp2 = ""; //获取链接
+        let temp21 = new Array();
+        let temp22;
+        let temp3 = "";
+        let i = 0;
+        let ii = 0;
         if (temp != null) {
-            for (let i = 0; i < temp.length; i++) {
-                temp2 += temp[i].replace(/"/g, "") + "\n";
+            for (i = 0; i < temp.length; i++) { //解决重复发送相同链接的bug
+                temp22 = temp[i].replace(/(href|src)="/g, "").replace(/"/g, "");
+                for (ii = 0; ii < temp21.length; ii++) {
+                    if (temp22 == temp21[ii]) {
+                        break;
+                    }
+                }
+                if (ii == temp21.length) {
+                    temp21.push(temp22);
+                }
+            }
+            for (i = 0; i < temp21.length; i++) { //添加换行
+                if (i < temp21.length - 1) {
+                    temp2 += temp21[i] + "\n";
+                } else {
+                    temp2 += temp21[i];
+                }
             }
         }
-        contentSnippet = contentSnippet.replace(/<p>/g, "").replace(/<\/p>/g, "");
+        contentSnippet = contentSnippet.replace(/<p>/g, "").replace(/<\/p>/g, ""); //清理多于的html标签
         contentSnippet = contentSnippet.replace(/<code>/g, "").replace(/<\/code>/g, "");
         contentSnippet = contentSnippet.replace(/<em>/g, "").replace(/<\/em>/g, "");
         contentSnippet = contentSnippet.replace(/<strong>/g, "").replace(/<\/strong>/g, "");
         contentSnippet = contentSnippet.replace(/<pre.*?>/g, "").replace(/<\/pre>/g, "");
         contentSnippet = contentSnippet.replace(/<a.*?>/g, "").replace(/<\/a>/g, "");
-        contentSnippet = contentSnippet.replace(/<br>/g, "\n");
+        contentSnippet = contentSnippet.replace(/<img.*?>/g, "").replace(/<\/img>/g, "");
+        contentSnippet = contentSnippet.replace(/<br>/g, "").replace(/<\/img>/g, "");
+        let temp4 = contentSnippet.split("<br>");
+        //console.log("temp4:" + temp4);
+        if (temp4.length > 0) {
+            for (i = 0; i < temp4.length; i++) {
+                if (temp4[i] != "") {
+                    temp3 += temp4[i]; //效果是去掉多余的换行
+                }
+            }
+            contentSnippet = temp3
+        }
+        //contentSnippet = contentSnippet.replace(/<br>/g, "\n");
         //console.log(content.match(/"(http|https):\/\/.*?"/g));
         //https://www.runoob.com/jsref/jsref-match.html JavaScript match() 方法
-        contentSnippet = contentSnippet + "\n" + temp2;
-        return contentSnippet;
+        contentSnippet = contentSnippet + "\n" + tieba(temp2); //补回解析出的链接
+        return unescape(contentSnippet);
     }
+
+    function unescape(str) {
+        return str.replace(/&#44;/g, ',').replace(/&#91;/g, '[').replace(/&#93;/g, ']').replace(/&amp;/g, '&');
+    }
+    //https://github.com/Tsuk1ko/cq-picsearcher-bot/blob/master/src/CQcode.js#L24
 }
 
 module.exports = {
@@ -170,14 +216,16 @@ module.exports = {
         },
         commands: [{
                 id: 'add',
-                helper: '。rss add [链接]+[说明]	添加订阅',
+                helper: '。rss add [链接]+[说明]+[开关解析CQ true/false]	添加订阅',
                 command: /^。rss add (.*)$/,
                 func: async(e) => {
                     const temp = e.msg.substr(9);
                     let link = temp.split("+")[0];
                     let s = "";
-                    if (temp.split("+").length == 2) {
+                    let s1 = "true";
+                    if (temp.split("+").length == 3) {
                         s = temp.split("+")[1];
+                        s1 = temp.split("+")[2];
                     }
                     /*
  https://www.w3school.com.cn/js/jsref_substr.asp JavaScript substr() 方法
@@ -208,6 +256,7 @@ length	可选。子串中的字符数。必须是数值。如果省略了该参�
                                         group: group,
                                         user: sender,
                                         status: "enable",
+                                        cq: s1,
                                         last_id: ""
                                     })
                                     .write();
@@ -260,6 +309,49 @@ length	可选。子串中的字符数。必须是数值。如果省略了该参�
                 }
             },
             {
+                id: 'assign',
+                helper: '。rss switch [id]	开关订阅',
+                command: /^。rss switch (.*)$/,
+                func: async(e) => {
+                    const id = e.msg.substr(12);
+                    const group = e.group;
+                    //console.log(id);
+                    if (!admin.isAdmin(e.sender.user_id)) {
+                        api.bot.socket.send.group('很抱歉，你不是机器人管理员，无权限操作！', e.group);
+                        return;
+                    }
+                    try {
+                        //console.log(await db2.read().get(`rss[feed]`).find({
+                        //    id: parseInt(id)
+                        //}).value())
+                        let temp = await db2.read().get(`rss[feed]`).find({
+                            id: parseInt(id)
+                        }).value();
+                        if (temp != undefined) {
+                            if (temp.status == "enable") {
+                                await db2.read().get(`rss[feed]`).find({
+                                    id: parseInt(id)
+                                }).assign({
+                                    status: "disable"
+                                }).write();
+                                api.bot.socket.send.group('[RSS] 关闭订阅', group);
+                            } else {
+                                await db2.read().get(`rss[feed]`).find({
+                                    id: parseInt(id)
+                                }).assign({
+                                    status: "enable"
+                                }).write();
+                                api.bot.socket.send.group('[RSS] 开启订阅', group);
+                            }
+                        } else {
+                            api.bot.socket.send.group('[RSS] 该rss不存在，无法开关', group);
+                        }
+                    } catch (e) {
+                        api.bot.socket.send.group('[RSS] 开关失败:' + e, group);
+                    }
+                }
+            },
+            {
                 id: 'list',
                 helper: '。rss list	查看本群订阅列表',
                 command: /。rss list/,
@@ -280,10 +372,11 @@ length	可选。子串中的字符数。必须是数值。如果省略了该参�
                                 //console.log(data[i].status);
                                 s1 += "id: " + data[i].id + " , ";
                                 s1 += "备注：" + data[i].s + " , ";
-                                s1 += "url：" + data[i].url;
+                                s1 += "url：" + data[i].url + " , ";
                                 //s1 += "group: " + data[i].group;
-                                //s2 += "user:" + data[i].user + "\n";
-                                //s2 += "status:" + data[i].status;
+                                //s1 += "user:" + data[i].user + "\n";
+                                s1 += "是否开启:" + data[i].status; // + " , ";
+                                //s1 += "使用CQ:" + data[i].cq;
                                 s1 += "\n";
                             }
                             api.bot.socket.send.group(s1, e.group);
@@ -303,13 +396,12 @@ length	可选。子串中的字符数。必须是数值。如果省略了该参�
                 func: async(e) => {
                     if (!admin.isAdmin(e.sender.user_id)) {
                         api.bot.socket.send.group('很抱歉，你不是机器人管理员，无权限操作！', e.group);
-                        return;
                     } else if (update2 == true) {
                         api.bot.socket.send.group('很抱歉，订阅更新中，暂不能再次刷新！', e.group);
-                        return;
+                    } else {
+                        await update();
+                        api.bot.socket.send.group('[RSS] 开始刷新', e.group);
                     }
-                    await update();
-                    api.bot.socket.send.group('[RSS] 开始刷新', e.group);
                 }
             },
             {
@@ -317,7 +409,7 @@ length	可选。子串中的字符数。必须是数值。如果省略了该参�
                 helper: '。rss help	rss帮助说明',
                 command: /。rss help/,
                 func: async(e) => {
-                    api.bot.socket.send.group('[RSS] 指令列表：\n查询 。rss list\n增加 。rss add[链接]+[备注说明]\n删除 。rss del[链接]\n立即刷新 。rss update', e.group);
+                    api.bot.socket.send.group('[RSS] 指令列表：\n查询  。rss list\n增加  。rss add[rss链接]+[备注说明-文本]+[cq解析开关-true/false]\n删除  。rss del[id]\n开关订阅  。rss switch[id]\n立即刷新  。rss update', e.group);
                 }
             }
         ]
