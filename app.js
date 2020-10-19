@@ -1,3 +1,4 @@
+process.env.TZ='Asia/Shanghai';
 const fs = require('fs');
 const plugin = require('./plugin');
 /*const {
