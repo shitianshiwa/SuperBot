@@ -201,7 +201,7 @@ const update = async() => {
     }
 
     function unescape(str) {
-        return str.replace(/&#44;/g, ',').replace(/&#91;/g, '[').replace(/&#93;/g, ']').replace(/(&amp;|&#38;)/g, '&');
+        return str.replace(/&#44;/g, ',').replace(/&#91;/g, '[').replace(/&#93;/g, ']').replace(/(&amp;|&#38;)/g, '&').replace(/&gt;/g,">");
     }
     //https://github.com/Tsuk1ko/cq-picsearcher-bot/blob/master/src/CQcode.js#L24
 }
