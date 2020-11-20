@@ -108,7 +108,7 @@ const utils = {
 						link: `https://live.bilibili.com/${e.roomid}`,
 						name: e.uname,
 						title: e.title,
-						stat: (e.liveStatus === 1),
+						stat: e.liveStatus === 1,
 						online: e.lastLive.online
 					}
 				}else{
@@ -119,11 +119,13 @@ const utils = {
 
 					if(!cache.vtb[e.mid].stat && e.liveStatus === 1){
 						// 新开播
-						api.logger.debug(JSON.stringify(e));
-						utils.sendLiveStat(e.mid, e.uname, e.title, e.lastLive.online, `https://live.bilibili.com/${e.roomid}`);
+						api.logger.debug(e);
+						if(e.follower >= api.config.vtb.limit){
+							utils.sendLiveStat(e.mid, e.uname, e.title, e.lastLive.online, `https://live.bilibili.com/${e.roomid}`);
+						}
 					}
 
-					cache.vtb[e.mid].stat = (e.liveStatus === 1);
+					cache.vtb[e.mid].stat = e.liveStatus === 1;
 				}
 			})
 		});
@@ -139,12 +141,12 @@ module.exports = {
 	},
 	events: {
 		// 事件列表
-		onload: (e) => {
+		onload: () => {
 			utils.init();
 
 			api.logger.info(`vtb 开始运行`)
 		},
-		onunload: (e) => {
+		onunload: () => {
 			if(socket) {
 				socket.close();
 				socket.disconnect();

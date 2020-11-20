@@ -10,11 +10,11 @@ module.exports = {
 	},
 	events: {
 		// 加载
-		onload: (e) => {
+		onload: () => {
 			api.logger.info(`AdminManager 开始运行`);
 		},
 		// 卸载
-		onunload: (e) => {
+		onunload: () => {
 			api.logger.info(`AdminManager 停止运行`);
 		}
 	},
@@ -41,7 +41,7 @@ module.exports = {
 		{
 			id: 'rm',
 			helper: '.m rm [QQ号] 删除管理员',
-			command: /%\.m rm (.*)$/,
+			command: /^\.m rm (.*)$/,
 			func: async (e) => {
 				const qq = e.msg.substr(7);
 				const sender = e.sender.user_id;
