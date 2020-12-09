@@ -8,8 +8,11 @@ const low = require('lowdb');
 const _ = require('lodash'); // https://www.lodashjs.com 是一个一致性、模块化、高性能的 JavaScript 实用工具库。
 const config = require('../config');
 const dayjs = require('dayjs');
+const canvas = require('canvas');
 const tieba = require("../lib/rss/teba");
 
+//需要加上文本内容比较，防止忽略订阅有更新
+//需要加上item比较防止推送已有的订阅
 //json数据库
 //const isCi = (process.argv.indexOf('ci') !== -1);
 //if (isCi) return;
@@ -31,6 +34,7 @@ obj[val] = key;
 db2.read().get('rss').defaults(obj).write();
 const check_interval = config.plugin.rss.check_interval;
 const cd = config.plugin.rss.cd;
+
 let update2 = false;
 const update = async () => {
     api.logger.info(`RSS 开始更新订阅`);
@@ -72,6 +76,7 @@ const update = async () => {
                                 let index = 0;
                                 let i = 0;
                                 let s = "";
+                                let s2 = "";
                                 for (i = 0; i < rss.items.length; i++) { //判断更新了多少条
                                     //console.log(rss_result.items[i].link);
                                     if (r[ii].last_id == rss.items[i].link) {
@@ -86,11 +91,12 @@ const update = async () => {
                                     //temp = /&lt;pre style=.*&gt;(.*)&lt;/.exec(rss_result.items[i].content.trim());
                                     //console.log(rss_result.items[i]);
                                     s = s + [
-                                        `标题${(i + 1).toString()}：${rss.items[i].title.trim()}`,
+                                        `标题${(i+1).toString()}：${rss.items[i].title.trim()}`,
                                         `内容：${getcontentSnippet(rss.items[i].content.trim())}`,
                                         `链接：${rss.items[i].link}`,
-                                        `最后更新时间：${dayjs(rss.items[i].pubDate).format('YYYY年M月D日 星期d ').replace("星期0", "星期天") + new Date(rss.items[i].pubDate).toTimeString().split("(")[0]}`
+                                        `最后更新时间：${dayjs(rss.items[i].pubDate).format('YYYY年M月D日 星期d ').replace("星期0","星期天") + new Date(rss.items[i].pubDate).toTimeString().split("(")[0]}`
                                     ].join('\n') + "\n";
+                                    s2 = s2 + `${rss.items[i].link}\n`;
                                     if (i < index - 1) {
                                         s += "\n";
                                     }
@@ -112,9 +118,20 @@ const update = async () => {
                                 if (index > 0) { //有更新才转发
                                     if (r[ii].cq == "false") //true为不解析，false为解析。。。。。
                                     {
-                                        api.bot.socket.send.group(s, r[ii].group, false);
-                                    } else {
                                         api.bot.socket.send.group(s, r[ii].group);
+                                    } else { // 背景
+                                        const base = canvas.createCanvas(1000, 500 * i);
+                                        let ctx = base.getContext("2d");
+                                        ctx.fillStyle = "#ECECF6";
+                                        ctx.fillRect(0, 0, 1000, 500 * i);
+                                        // 填充文字
+                                        ctx.fillStyle = "#000000";
+                                        ctx.font = "400 32px SimHei";
+                                        ctx.fillText(s, 50, 50);
+                                        const img64 = base.toBuffer("image/jpeg", {
+                                            quality: 1
+                                        }).toString("base64");
+                                        api.bot.socket.send.group(`[CQ:image,file=base64://${img64}]\n` + s2, r[ii].group, false);
                                     }
                                     await db2.read().get(`rss[feed]`).find({
                                         id: r[ii].id
@@ -232,203 +249,203 @@ module.exports = {
         }
     },
     commands: [{
-        id: 'add',
-        helper: '。rss add [链接]+[说明]+[开关解析CQ true/false]	添加订阅',
-        command: /^。rss add (.*)$/,
-        func: async (e) => {
-            const temp = e.msg.substr(9);
-            let link = temp.split("+")[0];
-            let s = "";
-            let s1 = "true";
-            if (temp.split("+").length == 3) {
-                s = temp.split("+")[1];
-                s1 = temp.split("+")[2];
-            }
-            /*
-https://www.w3school.com.cn/js/jsref_substr.asp JavaScript substr() 方法
+            id: 'add',
+            helper: '。rss add [链接]+[说明]+[开关解析CQ true/false]	添加订阅',
+            command: /^。rss add (.*)$/,
+            func: async (e) => {
+                const temp = e.msg.substr(9);
+                let link = temp.split("+")[0];
+                let s = "";
+                let s1 = "true";
+                if (temp.split("+").length == 3) {
+                    s = temp.split("+")[1];
+                    s1 = temp.split("+")[2];
+                }
+                /*
+ https://www.w3school.com.cn/js/jsref_substr.asp JavaScript substr() 方法
 参数	描述
 start	必需。要抽取的子串的起始下标。必须是数值。如果是负数，那么该参数声明从字符串的尾部开始算起的位置。也就是说，-1 指字符串中最后一个字符，-2 指倒数第二个字符，以此类推。
 length	可选。子串中的字符数。必须是数值。如果省略了该参数，那么返回从 stringObject 的开始位置到结尾的字串。
-*/
-            const group = e.group;
-            const sender = e.sender.user_id;
+ */
+                const group = e.group;
+                const sender = e.sender.user_id;
 
-            if (!admin.isAdmin(e.sender.user_id)) {
-                api.bot.socket.send.group('很抱歉，你不是机器人管理员，无权限操作！', e.group);
-                return;
-            }
+                if (!admin.isAdmin(e.sender.user_id)) {
+                    api.bot.socket.send.group('很抱歉，你不是机器人管理员，无权限操作！', e.group);
+                    return;
+                }
 
-            if (/^(http(s)?:\/\/)\w+[^\s]+(\.[^\s]+){1,}$/g.test(link)) {
-                parser.parseURL(link).then(async e => {
-                    if (await db2.read().get(`rss[feed]`).find({
-                        url: link,
-                        group: group
-                    }).value() == undefined) {
-                        let id = parseInt(new Date().getTime() / 1000);
-                        await db2.read().get(`rss[feed]`)
-                            .push({
-                                id: id,
+                if (/^(http(s)?:\/\/)\w+[^\s]+(\.[^\s]+){1,}$/g.test(link)) {
+                    parser.parseURL(link).then(async e => {
+                        if (await db2.read().get(`rss[feed]`).find({
                                 url: link,
-                                s: s,
-                                group: group,
-                                user: sender,
-                                status: "enable",
-                                cq: s1,
-                                last_id: ""
+                                group: group
+                            }).value() == undefined) {
+                            let id = parseInt(new Date().getTime() / 1000);
+                            await db2.read().get(`rss[feed]`)
+                                .push({
+                                    id: id,
+                                    url: link,
+                                    s: s,
+                                    group: group,
+                                    user: sender,
+                                    status: "enable",
+                                    cq: s1,
+                                    last_id: ""
+                                })
+                                .write();
+                            api.bot.socket.send.group('[RSS] 订阅成功', group);
+                        } else {
+                            api.bot.socket.send.group('[RSS] 该rss已订阅', group);
+                        }
+                    }).catch(e => {
+                        api.bot.socket.send.group('[RSS] 订阅失败：' + e, group);
+                    });
+                } else {
+                    api.bot.socket.send.group('[RSS] 请填写正确的链接', group);
+                }
+            }
+        },
+        {
+            id: 'remove',
+            helper: '。rss del [id]	删除订阅',
+            command: /^。rss del (.*)$/,
+            func: async (e) => {
+                const id = e.msg.substr(9);
+                const group = e.group;
+                //console.log(id);
+                if (!admin.isAdmin(e.sender.user_id)) {
+                    api.bot.socket.send.group('很抱歉，你不是机器人管理员，无权限操作！', e.group);
+                    return;
+                } else if (update2 == true) {
+                    api.bot.socket.send.group('很抱歉，订阅更新中，暂不能删除订阅！', e.group);
+                    return;
+                }
+                try {
+                    //console.log(await db2.read().get(`rss[feed]`).find({
+                    //    id: parseInt(id)
+                    //}).value())
+                    if (await db2.read().get(`rss[feed]`).find({
+                            id: parseInt(id)
+                        }).value() != undefined) {
+                        await db2.read().get(`rss[feed]`)
+                            .remove({
+                                id: parseInt(id)
                             })
                             .write();
-                        api.bot.socket.send.group('[RSS] 订阅成功', group);
+                        api.bot.socket.send.group('[RSS] 删除成功', group);
                     } else {
-                        api.bot.socket.send.group('[RSS] 该rss已订阅', group);
+                        api.bot.socket.send.group('[RSS] 该rss不存在，无法删除', group);
                     }
-                }).catch(e => {
-                    api.bot.socket.send.group('[RSS] 订阅失败：' + e, group);
-                });
-            } else {
-                api.bot.socket.send.group('[RSS] 请填写正确的链接', group);
-            }
-        }
-    },
-    {
-        id: 'remove',
-        helper: '。rss del [id]	删除订阅',
-        command: /^。rss del (.*)$/,
-        func: async (e) => {
-            const id = e.msg.substr(9);
-            const group = e.group;
-            //console.log(id);
-            if (!admin.isAdmin(e.sender.user_id)) {
-                api.bot.socket.send.group('很抱歉，你不是机器人管理员，无权限操作！', e.group);
-                return;
-            } else if (update2 == true) {
-                api.bot.socket.send.group('很抱歉，订阅更新中，暂不能删除订阅！', e.group);
-                return;
-            }
-            try {
-                //console.log(await db2.read().get(`rss[feed]`).find({
-                //    id: parseInt(id)
-                //}).value())
-                if (await db2.read().get(`rss[feed]`).find({
-                    id: parseInt(id)
-                }).value() != undefined) {
-                    await db2.read().get(`rss[feed]`)
-                        .remove({
-                            id: parseInt(id)
-                        })
-                        .write();
-                    api.bot.socket.send.group('[RSS] 删除成功', group);
-                } else {
-                    api.bot.socket.send.group('[RSS] 该rss不存在，无法删除', group);
+                } catch (e) {
+                    api.bot.socket.send.group('[RSS] 删除失败:' + e, group);
                 }
-            } catch (e) {
-                api.bot.socket.send.group('[RSS] 删除失败:' + e, group);
             }
-        }
-    },
-    {
-        id: 'assign',
-        helper: '。rss switch [id]	开关订阅',
-        command: /^。rss switch (.*)$/,
-        func: async (e) => {
-            const id = e.msg.substr(12);
-            const group = e.group;
-            //console.log(id);
-            if (!admin.isAdmin(e.sender.user_id)) {
-                api.bot.socket.send.group('很抱歉，你不是机器人管理员，无权限操作！', e.group);
-                return;
-            }
-            try {
-                //console.log(await db2.read().get(`rss[feed]`).find({
-                //    id: parseInt(id)
-                //}).value())
-                let temp = await db2.read().get(`rss[feed]`).find({
-                    id: parseInt(id)
-                }).value();
-                if (temp != undefined) {
-                    if (temp.status == "enable") {
-                        await db2.read().get(`rss[feed]`).find({
-                            id: parseInt(id)
-                        }).assign({
-                            status: "disable"
-                        }).write();
-                        api.bot.socket.send.group('[RSS] 关闭订阅', group);
+        },
+        {
+            id: 'assign',
+            helper: '。rss switch [id]	开关订阅',
+            command: /^。rss switch (.*)$/,
+            func: async (e) => {
+                const id = e.msg.substr(12);
+                const group = e.group;
+                //console.log(id);
+                if (!admin.isAdmin(e.sender.user_id)) {
+                    api.bot.socket.send.group('很抱歉，你不是机器人管理员，无权限操作！', e.group);
+                    return;
+                }
+                try {
+                    //console.log(await db2.read().get(`rss[feed]`).find({
+                    //    id: parseInt(id)
+                    //}).value())
+                    let temp = await db2.read().get(`rss[feed]`).find({
+                        id: parseInt(id)
+                    }).value();
+                    if (temp != undefined) {
+                        if (temp.status == "enable") {
+                            await db2.read().get(`rss[feed]`).find({
+                                id: parseInt(id)
+                            }).assign({
+                                status: "disable"
+                            }).write();
+                            api.bot.socket.send.group('[RSS] 关闭订阅', group);
+                        } else {
+                            await db2.read().get(`rss[feed]`).find({
+                                id: parseInt(id)
+                            }).assign({
+                                status: "enable"
+                            }).write();
+                            api.bot.socket.send.group('[RSS] 开启订阅', group);
+                        }
                     } else {
-                        await db2.read().get(`rss[feed]`).find({
-                            id: parseInt(id)
-                        }).assign({
-                            status: "enable"
-                        }).write();
-                        api.bot.socket.send.group('[RSS] 开启订阅', group);
+                        api.bot.socket.send.group('[RSS] 该rss不存在，无法开关', group);
                     }
-                } else {
-                    api.bot.socket.send.group('[RSS] 该rss不存在，无法开关', group);
+                } catch (e) {
+                    api.bot.socket.send.group('[RSS] 开关失败:' + e, group);
                 }
-            } catch (e) {
-                api.bot.socket.send.group('[RSS] 开关失败:' + e, group);
             }
-        }
-    },
-    {
-        id: 'list',
-        helper: '。rss list	查看本群订阅列表',
-        command: /。rss list/,
-        func: async (e) => {
-            try {
-                let s1 = "";
-                let data = db2.read().get(`rss[feed]`).filter({
-                    group: e.group
-                }).value();
-                //console.log(data);
-                if (data.length != 0) {
-                    //console.log(data.length);
-                    for (let i = 0; i < data.length; i++) {
-                        //console.log(data[i].id);
-                        //console.log(data[i].url);
-                        //console.log(data[i].group);
-                        //console.log(data[i].user);
-                        //console.log(data[i].status);
-                        s1 += "id: " + data[i].id + " , ";
-                        s1 += "备注：" + data[i].s + " , ";
-                        s1 += "url：" + data[i].url + " , ";
-                        //s1 += "group: " + data[i].group;
-                        //s1 += "user:" + data[i].user + "\n";
-                        s1 += "是否开启:" + data[i].status; // + " , ";
-                        //s1 += "使用CQ:" + data[i].cq;
-                        s1 += "\n";
+        },
+        {
+            id: 'list',
+            helper: '。rss list	查看本群订阅列表',
+            command: /。rss list/,
+            func: async (e) => {
+                try {
+                    let s1 = "";
+                    let data = db2.read().get(`rss[feed]`).filter({
+                        group: e.group
+                    }).value();
+                    //console.log(data);
+                    if (data.length != 0) {
+                        //console.log(data.length);
+                        for (let i = 0; i < data.length; i++) {
+                            //console.log(data[i].id);
+                            //console.log(data[i].url);
+                            //console.log(data[i].group);
+                            //console.log(data[i].user);
+                            //console.log(data[i].status);
+                            s1 += "id: " + data[i].id + " , ";
+                            s1 += "备注：" + data[i].s + " , ";
+                            s1 += "url：" + data[i].url + " , ";
+                            //s1 += "group: " + data[i].group;
+                            //s1 += "user:" + data[i].user + "\n";
+                            s1 += "是否开启:" + data[i].status; // + " , ";
+                            //s1 += "使用CQ:" + data[i].cq;
+                            s1 += "\n";
+                        }
+                        api.bot.socket.send.group(s1, e.group);
+                        //console.log(s1);
+                    } else {
+                        api.bot.socket.send.group('[RSS] 这个群还没有订阅任何内容', e.group);
                     }
-                    api.bot.socket.send.group(s1, e.group);
-                    //console.log(s1);
-                } else {
-                    api.bot.socket.send.group('[RSS] 这个群还没有订阅任何内容', e.group);
+                } catch (e) {
+                    api.bot.socket.send.group('[RSS] 查询失败：' + e, e.group);
                 }
-            } catch (e) {
-                api.bot.socket.send.group('[RSS] 查询失败：' + e, e.group);
+            }
+        },
+        {
+            id: 'update',
+            helper: '。rss update	立刻刷新订阅',
+            command: /。rss update/,
+            func: async (e) => {
+                if (!admin.isAdmin(e.sender.user_id)) {
+                    api.bot.socket.send.group('很抱歉，你不是机器人管理员，无权限操作！', e.group);
+                } else if (update2 == true) {
+                    api.bot.socket.send.group('很抱歉，订阅更新中，暂不能再次刷新！', e.group);
+                } else {
+                    await update();
+                    api.bot.socket.send.group('[RSS] 开始刷新', e.group);
+                }
+            }
+        },
+        {
+            id: 'help',
+            helper: '。rss help	rss帮助说明',
+            command: /。rss help/,
+            func: async (e) => {
+                api.bot.socket.send.group('[RSS] 指令列表：\n查询  。rss list\n增加  。rss add[rss链接]+[备注说明-文本]+[cq解析开关-true/false]\n删除  。rss del[id]\n开关订阅  。rss switch[id]\n立即刷新  。rss update', e.group);
             }
         }
-    },
-    {
-        id: 'update',
-        helper: '。rss update	立刻刷新订阅',
-        command: /。rss update/,
-        func: async (e) => {
-            if (!admin.isAdmin(e.sender.user_id)) {
-                api.bot.socket.send.group('很抱歉，你不是机器人管理员，无权限操作！', e.group);
-            } else if (update2 == true) {
-                api.bot.socket.send.group('很抱歉，订阅更新中，暂不能再次刷新！', e.group);
-            } else {
-                await update();
-                api.bot.socket.send.group('[RSS] 开始刷新', e.group);
-            }
-        }
-    },
-    {
-        id: 'help',
-        helper: '。rss help	rss帮助说明',
-        command: /。rss help/,
-        func: async (e) => {
-            api.bot.socket.send.group('[RSS] 指令列表：\n查询  。rss list\n增加  。rss add[rss链接]+[备注说明-文本]+[cq解析开关-true/false]\n删除  。rss del[id]\n开关订阅  。rss switch[id]\n立即刷新  。rss update', e.group);
-        }
-    }
     ]
 }
 /**
@@ -527,7 +544,7 @@ await db.read()._.mixin({
     }
 })
 
-let r=db.get('testTable').second().value()
+let r=db.get('testTable').second().value() 
 console.log(r)
 
 后续===>
