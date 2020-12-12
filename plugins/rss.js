@@ -9,7 +9,15 @@ const _ = require('lodash'); // https://www.lodashjs.com 是一个一致性、�
 const config = require('../config');
 const dayjs = require('dayjs');
 const canvas = require('canvas');
-const tieba = require("../lib/rss/teba");
+canvas.registerFont('simhei.ttf', {
+    family: 'SimHei'
+});
+const context = canvas.createCanvas(1, 1).getContext("2d");
+context.font = "400 28px SimHei";
+//const canvas = require('canvas');
+const tieba = require("../lib/rss/tieba");
+const dizhen = require("../lib/rss/dizhen");
+const github = require("../lib/rss/github");
 
 //需要加上文本内容比较，防止忽略订阅有更新
 //需要加上item比较防止推送已有的订阅
@@ -92,7 +100,7 @@ const update = async () => {
                                     //console.log(rss_result.items[i]);
                                     s = s + [
                                         `标题${(i+1).toString()}：${rss.items[i].title.trim()}`,
-                                        `内容：${getcontentSnippet(rss.items[i].content.trim())}`,
+                                        `内容：${getcontentSnippet(rss.items[i].content.trim(),rss.items[i].link)}`,
                                         `链接：${rss.items[i].link}`,
                                         `最后更新时间：${dayjs(rss.items[i].pubDate).format('YYYY年M月D日 星期d ').replace("星期0","星期天") + new Date(rss.items[i].pubDate).toTimeString().split("(")[0]}`
                                     ].join('\n') + "\n";
@@ -115,23 +123,30 @@ const update = async () => {
                                 */
                                 //console.log(groups.group);
                                 //console.log("index:" + index);
+
                                 if (index > 0) { //有更新才转发
+                                    s = getshorttest(s);
+                                    //console.log("getTextHeigth: " + getTextHeigth(s));
+                                    //console.log("getTextWidth: " + getTextWidth(s));
+                                    api.logger.debug(`${s}`);
+                                    let base = canvas.createCanvas(getTextWidth(s), getTextHeigth(s));
+                                    let ctx = base.getContext("2d");
+                                    ctx.fillStyle = "#ECECF6";
+                                    ctx.fillRect(0, 0, getTextWidth(s), getTextHeigth(s));
+                                    // 填充文字
+                                    ctx.fillStyle = "#000000";
+                                    ctx.font = "400 28px SimHei";
+                                    ctx.fillText(s, 50, 50);
+                                    let img64 = base.toBuffer("image/jpeg", {
+                                        quality: 1
+                                    }).toString("base64");
                                     if (r[ii].cq == "false") //true为不解析，false为解析。。。。。
                                     {
-                                        api.bot.socket.send.group(s, r[ii].group);
+                                        api.bot.socket.send.group(`[CQ:image,file=base64://${img64}]`, r[ii].group, false);
+                                        api.bot.socket.send.group(s2, r[ii].group, false);
                                     } else { // 背景
-                                        const base = canvas.createCanvas(1000, 500 * i);
-                                        let ctx = base.getContext("2d");
-                                        ctx.fillStyle = "#ECECF6";
-                                        ctx.fillRect(0, 0, 1000, 500 * i);
-                                        // 填充文字
-                                        ctx.fillStyle = "#000000";
-                                        ctx.font = "400 32px SimHei";
-                                        ctx.fillText(s, 50, 50);
-                                        const img64 = base.toBuffer("image/jpeg", {
-                                            quality: 1
-                                        }).toString("base64");
-                                        api.bot.socket.send.group(`[CQ:image,file=base64://${img64}]\n` + s2, r[ii].group, false);
+                                        api.bot.socket.send.group(`[CQ:image,file=base64://${img64}]`, r[ii].group, false);
+                                        api.bot.socket.send.group(s2, r[ii].group, false);
                                     }
                                     await db2.read().get(`rss[feed]`).find({
                                         id: r[ii].id
@@ -161,7 +176,7 @@ const update = async () => {
         }, cd); //按指定时间间隔获取信息
     }
 
-    function getcontentSnippet(content) {
+    function getcontentSnippet(content, url) {
         let contentSnippet = content;
         //console.log(content.match(/href="(http|https):\/\/.*?"/g));
         let temp = content.match(/(href|src)="(http|https):\/\/.*?"/g); //获取链接
@@ -191,13 +206,14 @@ const update = async () => {
                 }
             }
         }
-        contentSnippet = contentSnippet.replace(/<p>/g, "").replace(/<\/p>/g, ""); //清理多于的html标签
-        contentSnippet = contentSnippet.replace(/<code>/g, "").replace(/<\/code>/g, "");
-        contentSnippet = contentSnippet.replace(/<em>/g, "").replace(/<\/em>/g, "");
-        contentSnippet = contentSnippet.replace(/<strong>/g, "").replace(/<\/strong>/g, "");
-        contentSnippet = contentSnippet.replace(/<pre.*?>/g, "").replace(/<\/pre>/g, "");
-        contentSnippet = contentSnippet.replace(/<a.*?>/g, "").replace(/<\/a>/g, "");
-        contentSnippet = contentSnippet.replace(/<img.*?>/g, "").replace(/<\/img>/g, "");
+        contentSnippet = contentSnippet.replace(/<br>/g, "\n")
+        if (url.search("tieba.baidu.com") != -1) {
+            contentSnippet = tieba(contentSnippet);
+        } else if (url.search("ceic.ac.cn") != -1) {
+            contentSnippet = dizhen(contentSnippet);
+        } else if (url.search("github.com") != -1) {
+            contentSnippet = github(contentSnippet);
+        }
         contentSnippet = contentSnippet.replace(/<br>/g, "\n")
         let temp4 = contentSnippet.split("\n");
         //console.log("temp4:" + temp4);
@@ -217,8 +233,83 @@ const update = async () => {
         //contentSnippet = contentSnippet.replace(/<br>/g, "\n");
         //console.log(content.match(/"(http|https):\/\/.*?"/g));
         //https://www.runoob.com/jsref/jsref-match.html JavaScript match() 方法
+        contentSnippet = contentSnippet.replace(/<p>/g, "").replace(/<\/p>/g, ""); //清理多于的html标签
+        contentSnippet = contentSnippet.replace(/<code>/g, "").replace(/<\/code>/g, "");
+        contentSnippet = contentSnippet.replace(/<em>/g, "").replace(/<\/em>/g, "");
+        contentSnippet = contentSnippet.replace(/<strong>/g, "").replace(/<\/strong>/g, "");
+        contentSnippet = contentSnippet.replace(/<pre.*?>/g, "").replace(/<\/pre>/g, "");
+        contentSnippet = contentSnippet.replace(/<a.*?>/g, "").replace(/<\/a>/g, "");
+        contentSnippet = contentSnippet.replace(/<img.*?>/g, "").replace(/<\/img>/g, "");
         contentSnippet = contentSnippet + "\n" + tieba(temp2); //补回解析出的链接
         return unescape(contentSnippet.trim());
+    }
+
+    /*function getZuiChangWenBen(text) {
+        let max = 0;
+        let s = text.split("\n");
+        for (let i = 0; i < s.length; i++) {
+            if (s[i].length * 24 > max) {
+                max = s[i].length * 24;
+            }
+        }
+        console.log("max: " + max);
+        return max;
+    }*/
+    /**
+     * https://blog.csdn.net/u012860063/article/details/53105658
+     * JS 计算任意字符串宽度
+     * Uses canvas.measureText to compute and return the width of the given text of given font in pixels.
+     * 
+     * @param {String} text The text to be rendered.
+     * 
+     * @see https://stackoverflow.com/questions/118241/calculate-text-width-with-javascript/21015393#21015393
+     */
+    function getTextWidth(text) {
+        return context.measureText(text).width + 100;
+    }
+
+    function getshorttest(text) {
+        let len = 60;
+        let temp,
+            temp2 = "",
+            temp3 = 0;
+        text = text.split("\n");
+        let i, i2, i3, i4, i5;
+        for (i = 0; i < text.length; i++) {
+            temp = "";
+            i4 = len; //一行60字
+            i5 = 0; //切割字符串初始位置
+            if (text[i].length > len) {
+                for (i2 = 0; i2 < parseInt(text[i].length / len); i2++) { //判断切割几次字符串`
+                    temp3 = text[i].length - (text[i].length - i4);
+                    //console.log(text[i].length + " ,temp3:" + temp3)
+                    for (i3 = i5; i3 < temp3; i3++) { //获取指定分段字符串
+                        temp = temp + text[i][i3];
+                    }
+                    temp += "\n"; //增加换行
+                    i5 = i4; //切割开头
+                    i4 += len; //切割结尾
+                }
+                for (i3 = len * parseInt(text[i].length / len); i3 < text[i].length; i3++) { //补上最后一部分字符串，解决丢失
+                    temp = temp + text[i][i3];
+                }
+                temp += "\n"; //增加换行
+            } else {
+                temp = text[i] + "\n";
+            }
+            temp2 += temp;
+        }
+        return temp2;
+    }
+
+    function getTextHeigth(text) {
+        let jishu = 0;
+        for (let i = 0; i < text.length; i++) {
+            if (text[i] == "\n") {
+                jishu++; //计算多少行
+            }
+        }
+        return 29 * jishu + 60;
     }
 
     function unescape(str) {
