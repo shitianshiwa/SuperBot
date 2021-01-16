@@ -90,9 +90,15 @@ const update = async() => {
                                 let i = 0;
                                 let s = "";
                                 let s2 = "";
+                                let temp = "";
                                 for (i = 0; i < rss.items.length; i++) { //判断更新了多少条
                                     //console.log(rss_result.items[i].link);
-                                    if (r[ii].last_id == id) {
+                                    if (/\/huya\/live\//.test(r[ii].url)) {
+                                        temp = rss.items[i].guid;
+                                    } else {
+                                        temp = rss.items[i].link; //最新的
+                                    }
+                                    if (r[ii].last_id == temp) {
                                         break;
                                     } else {
                                         index++;
