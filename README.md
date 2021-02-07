@@ -1,6 +1,6 @@
 # SuperBot
 一个普通的QQ机器人
-
+https://github.com/SakuraBot-dev/SuperBot
 
 ## 如何使用
 1. 参考注释修改配置文件，记得重命名成 `config.js`
