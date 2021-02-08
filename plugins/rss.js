@@ -27,7 +27,9 @@ const pixivfanbox = require("../lib/rss/pixivfanbox");
 //if (isCi) return;
 if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir); //创建存放文件夹
 const FileSync = require('lowdb/adapters/FileSync');
-const { logger } = require('../config');
+const {
+    logger
+} = require('../config');
 const adapter = new FileSync(path.join(dbDir, 'db2.json'));
 const defaults = {
     rss: {}
@@ -155,10 +157,12 @@ const update = async () => {
                                     }).toString("base64");
                                     if (r[ii].cq == "false") //true为不解析，false为解析。。。。。
                                     {
-                                        api.logger.info(pic);
                                         api.bot.socket.send.group(`[CQ:image,file=base64://${img64}]`, r[ii].group, false);
                                         api.bot.socket.send.group(s2, r[ii].group, false);
-                                        api.bot.socket.send.group(pic, r[ii].group, false);
+                                        if (pic != "") {
+                                            api.logger.info(pic);
+                                            api.bot.socket.send.group(pic, r[ii].group, false);
+                                        }
                                     } else { // 背景
                                         api.bot.socket.send.group(`[CQ:image,file=base64://${img64}]`, r[ii].group, false);
                                         api.bot.socket.send.group(s2, r[ii].group, false);
