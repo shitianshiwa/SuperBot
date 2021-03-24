@@ -21,7 +21,8 @@ let data = db2.read().get(`rss[feed]`).find({ url: 'link3' }).value();
 console.log(data)
 process.exit()*/
 try {
-    fs.mkdirSync('./data');
+    fs.mkdirSync('./data');//创建数据文件夹
+    fs.mkdirSync('./logs');//创建日志文件夹
 } catch (e) {}
 
 // 开始加载插件

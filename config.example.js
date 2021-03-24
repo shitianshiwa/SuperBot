@@ -6,7 +6,29 @@ module.exports = {
     plugin: {
         rss: {
             check_interval: 3 * 60 * 1000, //定时获取信息
-            cd: 3 * 1000 //api使用延迟
+            cd: 3 * 1000, //api使用延迟
+            FANBOX_SESSION_ID: "",
+            pixiv: "pixiv.pximg.net",
+            fanbox: "downloads.fanbox.cc",
+            translate:
+            {
+                // 有道翻译的api授权
+                youdao: {
+                    appid: '',
+                    key: '',
+                    translate: false
+                },
+                // 百度翻译的api授权
+                baidu: {
+                    appid: '',
+                    key: '',
+                    translate: false
+                },
+                tx:
+                {
+                    translate: true
+                }
+            }
         },
         whois: {
             token: '' // 查询Whois的API
@@ -22,5 +44,9 @@ module.exports = {
     logger: {
         level: 'DEBUG', // 日志等级
     },
-    owner: '' // 所属人QQ号
+    owner: '', // 所属人QQ号
+    proxy: {
+        host: "",
+        port: 0
+    }
 }

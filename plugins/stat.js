@@ -19,8 +19,8 @@ module.exports = {
     },
     commands: [{
         id: 'stat',
-        helper: '.stat 查看发送/接收消息数量',
-        command: /^\.stat$/,
+        helper: '。stat 查看发送/接收消息数量',
+        command: /^\。stat$/,
         func: async(e) => {
             api.bot.socket.send.group([
                 `接收消息: ${api.bot.stat.receive || 'unknown'} 条`,
