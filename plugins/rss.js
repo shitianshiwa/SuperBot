@@ -319,7 +319,7 @@ const update = async (gid) => {
             let username = /https:\/\/(.*)\.fanbox\.cc\/posts\//.exec(url)[1];
             let fanboxindex = "fanbox" + username + url.split("/posts/")[1];
             if (translates[fanboxindex] == undefined) {
-                translates[fanboxindex] = await translate(contentSnippet.replace(/\<b\>.*\/month\<\/b>/, ""), fanboxindex, config.plugin.rss.translate.youdao.translate, config.plugin.rss.translate.baidu.translate, config.plugin.rss.translate.tx.translate);//文本，每个推特的id，有道开关，百度开关
+                translates[fanboxindex] = await translate(contentSnippet.replace(/\<b\>.*\/month\<\/b>/, ""), fanboxindex, config.plugin.rss.translate.youdao.translate, config.plugin.rss.translate.baidu.translate, config.plugin.rss.translate.tx.translate);//文本，每个推特的id，有道开关，百度开关，腾讯开关
             }
             contentSnippet = contentSnippet.replace(/\<b\>/g, "需要订阅费 ");
             contentSnippet = contentSnippet.replace(/\/month\<\/b\>/g, "(日元)/月才可以浏览 ");
