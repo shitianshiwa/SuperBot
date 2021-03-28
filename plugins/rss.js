@@ -294,15 +294,19 @@ const update = async (gid) => {
         //console.log(content.match(/"(http|https):\/\/.*?"/g));
         //https://www.runoob.com/jsref/jsref-match.html JavaScript match() 方法
         //console.log(unescape(contentSnippet.trim()))
-        contentSnippet = contentSnippet.replace(/<a.*?>/g, "").replace(/<\/a>/g, "");
-        contentSnippet = contentSnippet.replace(/<img.*?>/g, "").replace(/<\/img>/g, "");
         contentSnippet = contentSnippet.replace(/<p>/g, "").replace(/<\/p>/g, ""); //清理多于的html标签
         if (url.search("tieba.baidu.com") != -1) {
+            contentSnippet = contentSnippet.replace(/<a.*?>/g, "").replace(/<\/a>/g, "");
+            contentSnippet = contentSnippet.replace(/<img.*?>/g, "").replace(/<\/img>/g, "");
             contentSnippet = tieba(contentSnippet);
             contentSnippet = contentSnippet + "\n" + tieba(temp2); //补回解析出的链接
         } else if (url.search("ceic.ac.cn") != -1) {
+            contentSnippet = contentSnippet.replace(/<a.*?>/g, "").replace(/<\/a>/g, "");
+            contentSnippet = contentSnippet.replace(/<img.*?>/g, "").replace(/<\/img>/g, "");
             contentSnippet = dizhen(contentSnippet);
         } else if (url.search("github.com") != -1) {
+            contentSnippet = contentSnippet.replace(/<a.*?>/g, "").replace(/<\/a>/g, "");
+            contentSnippet = contentSnippet.replace(/<img.*?>/g, "").replace(/<\/img>/g, "");
             contentSnippet = contentSnippet.replace(/<code>/g, "").replace(/<\/code>/g, "");
             contentSnippet = contentSnippet.replace(/<em>/g, "").replace(/<\/em>/g, "");
             contentSnippet = contentSnippet.replace(/<strong>/g, "").replace(/<\/strong>/g, "");
@@ -318,12 +322,14 @@ const update = async (gid) => {
             contentSnippet = temp[0].replace("Fee Required:", "");//文本内容
             let username = /https:\/\/(.*)\.fanbox\.cc\/posts\//.exec(url)[1];
             let fanboxindex = "fanbox" + username + url.split("/posts/")[1];
+            contentSnippet = contentSnippet.replace(/<a.*?>/g, "").replace(/<\/a>/g, "");
+            contentSnippet = contentSnippet.replace(/<img.*?>/g, "").replace(/<\/img>/g, "");
+            contentSnippet = contentSnippet + "\n" + temp2; //补回解析出的链接
             if (translates[fanboxindex] == undefined) {
-                translates[fanboxindex] = await translate(contentSnippet.replace(/\<b\>.*\/month\<\/b>/, ""), fanboxindex, config.plugin.rss.translate.youdao.translate, config.plugin.rss.translate.baidu.translate, config.plugin.rss.translate.tx.translate);//文本，每个推特的id，有道开关，百度开关，腾讯开关
+                translates[fanboxindex] = await translate(contentSnippet.replace(/\<b\>.*\/month\<\/b>/, ""), fanboxindex, config.plugin.rss.translate.youdao.translate, config.plugin.rss.translate.baidu.translate, config.plugin.rss.translate.tx.translate);//文本，每个推特的id，有道开关，百度开关
             }
             contentSnippet = contentSnippet.replace(/\<b\>/g, "需要订阅费 ");
             contentSnippet = contentSnippet.replace(/\/month\<\/b\>/g, "(日元)/月才可以浏览 ");
-
             contentSnippet += "\n" + translates[fanboxindex];
             for (i = 1; i < temp.length; i++) {//图片内容
                 pic += temp[i] + "\n";
@@ -331,6 +337,8 @@ const update = async (gid) => {
             index2 = temp.length;
         }
         else {
+            contentSnippet = contentSnippet.replace(/<a.*?>/g, "").replace(/<\/a>/g, "");
+            contentSnippet = contentSnippet.replace(/<img.*?>/g, "").replace(/<\/img>/g, "");
             contentSnippet = contentSnippet + "\n" + temp2; //补回解析出的链接
         }
         contentSnippet = contentSnippet.replace(/<br>/g, "\n")
