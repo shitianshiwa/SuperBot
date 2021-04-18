@@ -158,7 +158,7 @@ const update = async (gid) => {
                                         s = getshorttest(s);
                                         //console.log("getTextHeigth: " + getTextHeigth(s));
                                         //console.log("getTextWidth: " + getTextWidth(s));
-                                        api.logger.debug(`${s}`);
+                                        api.logger.debug(`${s}\n${s2}`);
                                         let base = canvas.createCanvas(getTextWidth(s), getTextHeigth(s));
                                         let ctx = base.getContext("2d");
                                         ctx.fillStyle = "#ECECF6";
@@ -213,17 +213,17 @@ const update = async (gid) => {
                                         if (r[ii].cq == "false") //true为不解析，false为解析。。。。。
                                         {
                                             console.log(__dirname);
+                                            api.bot.socket.send.group(s2, r[ii].group, false);
                                             api.bot.socket.send.group(`[CQ:image,file=base64://${img64}]`, r[ii].group, false);
                                             //api.bot.socket.send.group(`[CQ:image,file=file:///${path.join(__dirname, '../tmp/temp.jpg')}]`, r[ii].group, false);
-                                            api.bot.socket.send.group(s2, r[ii].group, false);
                                             if (pic != "") {
                                                 api.logger.info(pic);
                                                 api.bot.socket.send.group(pic, r[ii].group, false);
                                             }
                                         } else { // 背景
+                                            api.bot.socket.send.group(s2, r[ii].group, false);
                                             api.bot.socket.send.group(`[CQ:image,file=base64://${img64}]`, r[ii].group, false);
                                             //api.bot.socket.send.group(`[CQ:image,file=file:///${path.join(__dirname, '../tmp/temp.jpg')}]`, r[ii].group, false);
-                                            api.bot.socket.send.group(s2, r[ii].group, false);
                                         }
                                         await db2.read().get(`rss[feed]`).find({
                                             id: r[ii].id
@@ -651,7 +651,7 @@ length	可选。子串中的字符数。必须是数值。如果省略了该参�
         helper: '。rss help	rss帮助说明',
         command: /。rss help/,
         func: async (e) => {
-            api.bot.socket.send.group('[RSS] 指令列表：\n查询  。rss list\n增加  。rss add[rss链接]+[备注说明-文本]+[cq解析开关-true/false]\n删除  。rss del[id]\n开关订阅  。rss switch[id]\n立即刷新  。rss update', e.group);
+            api.bot.socket.send.group('[RSS] 指令列表：\n查询  。rss list\n增加  。rss add [rss链接]+[备注说明-文本]+[cq解析开关-true/false]\n删除  。rss del [id]\n开关订阅  。rss switch [id]\n立即刷新  。rss update', e.group);
         }
     }
     ]
